@@ -1,0 +1,72 @@
+version: '3'
+
+volumes:
+ wu-db-vol:
+
+services:
+  reverseproxy:
+    image: nginx:alpine
+    ports:
+      - 81:81
+      - 82:82
+      - 83:83
+      - 84:84
+    volumes:
+      - ./scripts/nginx.conf:/etc/nginx/nginx.conf
+      - ./scripts/auth_users.txt:/etc/nginx/auth_users.txt
+    restart: always
+  redis:
+    image: redis
+    command: redis-server --requirepass wuRedis
+    ports:
+      - 6378:6379
+    restart: always
+  mysql:
+    image: mysql:5.7
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - wu-db-vol:/var/lib/mysql
+      - ./scripts/init:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: Wealth!n@sia2016
+    ports:
+      - 3308:3306
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: Wealth!n@sia2016
+    depends_on:
+      - mysql
+      - reverseproxy
+  web:
+    image: ajitemsahasrabuddhe/php-apache:bionic-7.2-dev
+    hostname: web
+    volumes:
+      - ./wealthup-wp:/var/www/html
+      - ./scripts/000-default.conf:/etc/apache2/sites-available/000-default.conf
+    restart: always
+    depends_on:
+      - mysql
+      - reverseproxy
+  hub:
+    image: ajitemsahasrabuddhe/php-apache:bionic-7.2-dev
+    hostname: hub
+    volumes:
+      - ./wealthup-hub:/var/www/html
+      - ./scripts/001-default.conf:/etc/apache2/sites-available/000-default.conf
+    restart: always
+    depends_on:
+      - mysql
+      - reverseproxy
+  smartsearch:
+    image: ajitemsahasrabuddhe/php-apache:bionic-7.2-dev
+    hostname: smartsearch
+    volumes:
+      - ./wealthup-smartsearch:/var/www/html
+      - ./scripts/001-default.conf:/etc/apache2/sites-available/000-default.conf
+    restart: always
+    depends_on:
+      - mysql
+      - reverseproxy
